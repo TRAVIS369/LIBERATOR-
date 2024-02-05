@@ -1,0 +1,194 @@
+# Quantum neuro general ai code
+# By Travis
+
+# Import Qiskit and other modules
+from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, Aer, execute, transpile
+from qiskit.circuit import Parameter
+from qiskit.aqua.components.optimizers import COBYLA
+import numpy as np
+import multiprocessing as mp
+
+# Define the number of qubits and classical bits
+n_qubits: int = 4
+n_classical: int = 4
+
+# Define the quantum register, classical register, and quantum circuit
+qr: QuantumRegister = QuantumRegister(n_qubits)
+cr: ClassicalRegister = ClassicalRegister(n_classical)
+qc: QuantumCircuit = QuantumCircuit(qr, cr)
+
+# Define the parameters for the variational form as a numpy array
+theta: np.array = np.random.rand(4 * n_qubits)
+
+# Define the quantum autoencoder as the central node of the neuron
+# The quantum autoencoder compresses and encodes the input quantum information using a variational form
+# The output quantum information is then reconstructed using the same variational form in reverse order
+def quantum_autoencoder_v2(qc: QuantumCircuit, qr: QuantumRegister, theta: np.array) -> None:
+    """Compresses and encodes the input quantum information using a variational form.
+
+    Args:
+        qc (QuantumCircuit): The quantum circuit to which the quantum autoencoder is applied.
+        qr (QuantumRegister): The quantum register that contains the input quantum information.
+        theta (np.array): The array of parameters for the variational form.
+
+    Returns:
+        None
+    """
+    # Apply single qubit rotation gates to each qubit
+    for i in range(n_qubits):
+        qc.ry(theta[i], qr[i])
+    
+    # Add barrier for clarity
+    qc.barrier()
+
+    # Apply CNOT gates to entangle the qubits
+    for i in range(n_qubits - 1):
+        qc.cx(qr[i], qr[i + 1])
+    
+    # Add barrier for clarity
+    qc.barrier()
+
+    # Apply SWAP gates to swap the qubits
+    for i in range(n_qubits // 2):
+        qc.swap(qr[i], qr[n_qubits - i - 1])
+    
+    # Add barrier for clarity
+    qc.barrier()
+
+    # Apply CNOT gates to disentangle the qubits
+    for i in range(n_qubits - 1):
+        qc.cx(qr[i], qr[i + 1])
+    
+    # Add barrier for clarity
+    qc.barrier()
+
+    # Apply single qubit rotation gates to each qubit
+    for i in range(n_qubits):
+        qc.ry(theta[i], qr[i])
+    
+    # Add barrier for clarity
+    qc.barrier()
+
+    # Apply more rotation gates to each qubit using the remaining parameters
+    for i in range(n_qubits):
+        qc.rx(theta[i + n_qubits], qr[i])
+
+# Define the single qubit gates as the inbound "new data" gates
+# The single qubit gates receive the input quantum information from the previous layer or the external source
+def single_qubit_gates_v2(qc: QuantumCircuit, qr: QuantumRegister, theta: np.array) -> None:
+    """Receives the input quantum information from the previous layer or the external source.
+
+    Args:
+        qc (QuantumCircuit): The quantum circuit to which the single qubit gates are applied.
+        qr (QuantumRegister): The quantum register that contains the input quantum information.
+        theta (np.array): The array of parameters for the variational form.
+
+    Returns:
+        None
+    """
+    # Apply U3 gates to each qubit for advanced encoding using only one element of the theta array for each qubit
+    for i in range(n_qubits):
+        qc.u3(theta[i + 2 * n_qubits], 0, 0, qr[i])
+
+# Define the multi qubit gates as the multi direction dataflow gates
+# The multi qubit gates transmit the output quantum information to the next layer or the external destination
+def multi_qubit_gates(qc: QuantumCircuit, qr: QuantumRegister, theta: np.array) -> None:
+    """Transmits the output quantum information to the next layer or the external destination.
+
+    Args:
+        qc (QuantumCircuit): The quantum circuit to which the multi qubit gates are applied.
+        qr (QuantumRegister): The quantum register that contains the output quantum information.
+        theta (np.array): The array of parameters for the variational form.
+
+    Returns:
+        None
+    """
+    # Apply Toffoli gates to the first three qubits and the last qubit
+    qc.ccx(qr[0], qr[1], qr[3])
+    qc.ccx(qr[1], qr[2], qr[3])
+    qc.ccx(qr[2], qr[0], qr[3])
+
+# Define the parameterized and universal gates as the connection gates between neurons
+# The parameterized and universal gates allow for flexible and precise control of the quantum information flow
+def parameterized_and_universal_gates(qc: QuantumCircuit, qr: QuantumRegister, theta: np.array) -> None:
+    """Allows for flexible and precise control of the quantum information flow.
+
+    Args:
+        qc (QuantumCircuit): The quantum circuit to which the parameterized and universal gates are applied.
+        qr (QuantumRegister): The quantum register that contains the quantum information.
+        theta (np.array): The array of parameters for the variational form.
+
+    Returns:
+        None
+    """
+    # Apply parameterized rotation gates to each qubit
+    for i in range(n_qubits):
+        qc.rz(theta[i + 3 * n_qubits], qr[i])
+    
+    # Apply universal U3 gates to each qubit
+    for i in range(n_qubits):
+        qc.u3(theta[i + 4 * n_qubits], theta[i + 5 * n_qubits], theta[i + 6 * n_qubits], qr[i])
+
+# Define the quantum convolutional layer as an additional feature of the neuron
+# The quantum convolutional layer applies a quantum convolution operation to the input quantum information
+# The quantum convolution operation is a generalization of the classical convolution operation for quantum data
+def quantum_convolutional_layer(qc: QuantumCircuit, qr: QuantumRegister, theta: np.array) -> None:
+    """Applies a quantum convolution operation to the input quantum information.
+
+    Args:
+        qc (QuantumCircuit): The quantum circuit to which the quantum convolutional layer is applied.
+        qr (QuantumRegister): The quantum register that contains the input quantum information.
+        theta (np.array): The array of parameters for the variational form.
+
+    Returns:
+        None
+    """
+    # Define the kernel size and stride for the quantum convolution operation
+    kernel_size = 2
+    stride = 1
+
+    # Loop over the qubits with the kernel size and stride
+    for i in range(0, n_qubits - kernel_size + 1, stride):
+        # Apply a controlled rotation gate to the qubits in the kernel
+        qc.crz(theta[i + 7 * n_qubits], qr[i], qr[i + 1])
+
+# Define the quantum pooling layer as an additional feature of the neuron
+# The quantum pooling layer applies a quantum pooling operation to the output quantum information
+# The quantum pooling operation is a generalization of the classical pooling operation for quantum data
+def quantum_pooling_layer_v2(qc: QuantumCircuit, qr: QuantumRegister, theta: np.array) -> None:
+    """Applies a quantum pooling operation to the output quantum information.
+
+    Args:
+        qc (QuantumCircuit): The quantum circuit to which the quantum pooling layer is applied.
+        qr (QuantumRegister): The quantum register that contains the output quantum information.
+        theta (np.array): The array of parameters for the variational form.
+
+    Returns:
+        None
+    """
+    # Define the pool size and stride for the quantum pooling operation
+    pool_size = 2
+    stride = 2
+
+    # Loop over the qubits with the pool size and stride
+    for i in range(0, n_qubits - pool_size + 1, stride):
+        # Apply a measurement gate to the qubits in the pool
+        qc.measure(qr[i], cr[i])
+        # Apply measurement errors mitigation using the Qiskit Ignis library
+        from qiskit.ignis.mitigation.measurement import complete_meas_cal, CompleteMeasFitter
+        # Generate calibration circuits
+        qr_cal = QuantumRegister(n_qubits)
+        cr_cal = ClassicalRegister(n_qubits)
+        meas_calibs, state_labels = complete_meas_cal(qr=qr_cal, circlabel='mcal')
+        # Execute the calibration circuits
+        backend = Aer.get_backend('qasm_simulator')
+        job = execute(meas_calibs, backend=backend, shots=1000)
+        cal_results = job.result()
+        # Fit the calibration matrix
+        meas_fitter = CompleteMeasFitter(cal_results, state_labels, circlabel='mcal')
+        # Get the filter object
+        meas_filter = meas_fitter.filter
+        # Apply the filter to the measurement results
+        mitigated_results = meas_filter.apply(qc)
+
+# Define the cost function as the difference between the input and output quantum information
